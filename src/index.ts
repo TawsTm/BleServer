@@ -1,7 +1,27 @@
 import * as express from 'express';
 import * as cors from 'cors';
 
-const app: express.Application = express();
+import { WebSocketServer, RawData, WebSocket } from 'ws';
+
+// Websocket approach
+
+// Set up server
+const wss: WebSocketServer = new WebSocketServer({ port: 3000 });
+
+// Wire up some logic for the connection event (when a client connects) 
+wss.on('connection', function connection(ws: WebSocket): void {
+
+  // Wire up logic for the message event (when a client sends something)
+  ws.on('message', function incoming(message: RawData): void {
+    console.log('received: %s', message);
+  });
+
+  // Send a message
+  ws.send('Hello client!');
+});
+
+
+/*const app: express.Application = express();
 
 app.use(cors());
 app.use(express.json({limit: '1mb'}));
@@ -43,7 +63,7 @@ app.post('/api', (request: express.Request, response: express.Response) => {
             devices.push(playerID);
             console.log('Device was not in Serverlist, but already got an ID');
         } else {
-            console.log('Device is init and can be updated');
+            // Update the device RSSI.
         }
     } else if (update === 'cancel') {
         console.log('Player ' + playerID + ' canceled');
@@ -57,7 +77,7 @@ app.get('/api', (request: express.Request, response: express.Response) => {
         status: 'Es sollte Post als Anfrage gestellt werden'
     });
     console.log(request.body);
-});
+});*/
 
 interface UserData {
     playerID: string;
