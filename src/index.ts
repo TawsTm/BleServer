@@ -1,24 +1,96 @@
 import * as express from 'express';
 import * as cors from 'cors';
 
-import { WebSocketServer, RawData, WebSocket } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 
 // Websocket approach
+
+let idList: string[] = [];
+
+function heartbeat(this: any): void {
+  this.isAlive = true;
+}
 
 // Set up server
 const wss: WebSocketServer = new WebSocketServer({ port: 3000 });
 
+let pingInterval = setInterval(ping, 5000);
+
+// To give every new connected client its unique id.
+function getUniqueID(): string {
+  // There are 65535 possible ID's with 4 Hex-Numbers
+  let newID = Math.floor(Math.random()*65535).toString(16);
+
+  if(idList.some(element => element === newID)) {
+    newID = getUniqueID();
+  }
+
+  return newID;
+}
+
 // Wire up some logic for the connection event (when a client connects) 
 wss.on('connection', function connection(ws: WebSocket): void {
+  
+  //need to convert it to be Typescript conform
+  const extWs: ExtWebSocket = ws as ExtWebSocket;
+  
+  //Ping to check if the Client is still part of the connection.
+  extWs.isAlive = true;
+  ws.on('pong', heartbeat);
 
   // Wire up logic for the message event (when a client sends something)
-  ws.on('message', function incoming(message: RawData): void {
-    console.log('received: %s', message);
+  ws.on('message', function incoming(message: string): void {
+    const jsonMessage = JSON.parse(message);
+
+    // Register if there is not already an id present.
+    if(!jsonMessage.id) {
+      const playerID = getUniqueID();
+      // Send the Client his new ID
+      ws.send(JSON.stringify({id: playerID}));
+      console.log("new ID was send!");
+    } else {
+      if(idList.some(element => element === jsonMessage.id)) {
+        // If the Client is already registered and can just send Data.
+        console.log("Client registered and can send Data!");
+      } else {
+        // The Client already has an ID but is not registered in the Server anymore.
+        console.log("Error: This new Client already has an ID");
+      }
+    }
+    console.log('received: %s', jsonMessage);
   });
 
   // Send a message
   ws.send('Hello client!');
 });
+
+function ping() {
+  // wss.clients.size return the amount of individual connections.
+  console.log('Zurzeit sind so viele Geräte verbunden: ', wss.clients.size);
+  wss.clients.forEach(function each(ws: WebSocket) {
+    //need to convert it to be Typescript conform
+    const extWs: ExtWebSocket = ws as ExtWebSocket;
+    if (extWs.isAlive === false) {
+      console.log('Connection was terminated!');
+      return ws.terminate();
+    } else {
+      extWs.isAlive = false;
+      extWs.ping();
+      // There is no way to catch the ping event client sided so we have to send a message.
+      ws.send('ping');
+    }
+  });
+}
+
+wss.on('close', function close() {
+  clearInterval(pingInterval);
+  console.log('Connection closed!');
+});
+
+// So Typescript knows, that there is an extra boolean parameter.
+interface ExtWebSocket extends WebSocket {
+  isAlive: boolean;
+}
 
 
 /*const app: express.Application = express();
