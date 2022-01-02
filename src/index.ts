@@ -47,14 +47,17 @@ wss.on('connection', function connection(ws: WebSocket): void {
       const playerID = getUniqueID();
       // Send the Client his new ID
       ws.send(JSON.stringify({id: playerID}));
+      idList.push(jsonMessage.id);
       console.log("new ID was send!");
     } else {
       if(idList.some(element => element === jsonMessage.id)) {
+        // *** Grenzfall: ID ist jemand anderem zugeteilt und man loggt sich mit der eigenen ID neue ein.***
         // If the Client is already registered and can just send Data.
         console.log("Client registered and can send Data!");
       } else {
         // The Client already has an ID but is not registered in the Server anymore.
-        console.log("Error: This new Client already has an ID");
+        idList.push(jsonMessage.id);
+        console.log("Client reconnected after being disconnected");
       }
     }
     console.log('received: %s', jsonMessage);
