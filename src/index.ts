@@ -1,5 +1,5 @@
-import * as express from 'express';
-import * as cors from 'cors';
+/*import * as express from 'express';
+import * as cors from 'cors';*/
 
 import { WebSocketServer, WebSocket } from 'ws';
 
@@ -19,9 +19,9 @@ let pingInterval = setInterval(ping, 5000);
 // To give every new connected client its unique id.
 function getUniqueID(): string {
   // There are 65535 possible ID's with 4 Hex-Numbers
-  let newID = Math.floor(Math.random()*65535).toString(16);
+  let newID = Math.floor(Math.random() * 65535).toString(16);
 
-  if(idList.some(element => element === newID)) {
+  if (idList.some(element => element === newID)) {
     newID = getUniqueID();
   }
 
@@ -43,31 +43,32 @@ wss.on('connection', function connection(ws: WebSocket): void {
     const jsonMessage = JSON.parse(message);
 
     // Register if there is not already an id present.
-    if(!jsonMessage.id) {
+    if (!jsonMessage.id) {
       const playerID = getUniqueID();
       // Send the Client his new ID
       ws.send(JSON.stringify({id: playerID}));
       idList.push(jsonMessage.id);
-      console.log("new ID was send!");
+      console.log('new ID was send!');
     } else {
-      if(idList.some(element => element === jsonMessage.id)) {
+      if (idList.some(element => element === jsonMessage.id)) {
         // *** Grenzfall: ID ist jemand anderem zugeteilt und man loggt sich mit der eigenen ID neue ein.***
         // If the Client is already registered and can just send Data.
-        console.log("Client registered and can send Data!");
+        console.log('Client registered and can send Data!');
       } else {
         // The Client already has an ID but is not registered in the Server anymore.
         idList.push(jsonMessage.id);
-        console.log("Client reconnected after being disconnected");
+        console.log('Client reconnected after being disconnected');
       }
     }
-    console.log('received: %s', jsonMessage);
+    console.log('Erhalten von %s:', jsonMessage.id);
+    console.log('Liste: %o', jsonMessage.list);
   });
 
   // Send a message
   ws.send('Hello client!');
 });
 
-function ping() {
+function ping(): void {
   // wss.clients.size return the amount of individual connections.
   console.log('Zurzeit sind so viele Geräte verbunden: ', wss.clients.size);
   wss.clients.forEach(function each(ws: WebSocket) {
@@ -85,7 +86,7 @@ function ping() {
   });
 }
 
-wss.on('close', function close() {
+wss.on('close', function close(): void {
   clearInterval(pingInterval);
   console.log('Connection closed!');
 });
@@ -154,7 +155,7 @@ app.get('/api', (request: express.Request, response: express.Response) => {
     console.log(request.body);
 });*/
 
-interface UserData {
+/*interface UserData {
     playerID: string;
     update: string;
     deviceList: DevicePackage;
@@ -167,4 +168,4 @@ interface DevicePackage {
     rssi: number[];
     lifetime: number;
     playerID: string;
-  }
+  }*/
