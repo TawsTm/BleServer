@@ -5,7 +5,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 // Websocket approach
 
-let idList: string[] = [];
+//let idList: string[] = [];
+let deviceList: DeviceList[] = [];
 
 function heartbeat(this: any): void {
   this.isAlive = true;
@@ -18,10 +19,10 @@ let pingInterval = setInterval(ping, 5000);
 
 // To give every new connected client its unique id.
 function getUniqueID(): string {
-  // There are 65535 possible ID's with 4 Hex-Numbers
-  let newID = Math.floor(Math.random() * 65535).toString(16);
+  // There are 65535 possible ID's with 4 Hex-Numbers. Padding with 0 if code is too short.
+  let newID = Math.floor(Math.random() * 65535).toString(16).padStart(4, '0');
 
-  if (idList.some(element => element === newID)) {
+  if (deviceList.some(element => element.id === newID)) {
     newID = getUniqueID();
   }
 
@@ -47,21 +48,27 @@ wss.on('connection', function connection(ws: WebSocket): void {
       const playerID = getUniqueID();
       // Send the Client his new ID
       ws.send(JSON.stringify({id: playerID}));
-      idList.push(jsonMessage.id);
+      //deviceList.push(jsonMessage);
       console.log('new ID was send!');
     } else {
-      if (idList.some(element => element === jsonMessage.id)) {
+      if (deviceList.some(element => element.id === jsonMessage.id)) {
         // *** Grenzfall: ID ist jemand anderem zugeteilt und man loggt sich mit der eigenen ID neue ein.***
         // If the Client is already registered and can just send Data.
-        console.log('Client registered and can send Data!');
+        deviceList.some(element => { 
+          if (element.id === jsonMessage.id) {
+            element.devices = jsonMessage.list;
+            element.timout = false;
+          }
+        });
       } else {
         // The Client already has an ID but is not registered in the Server anymore.
-        idList.push(jsonMessage.id);
-        console.log('Client reconnected after being disconnected');
+        deviceList.push({id: jsonMessage.id, devices: jsonMessage.list, timout: false});
+        console.log('Client first connect or reconnect after being disconnected');
       }
     }
-    console.log('Erhalten von %s:', jsonMessage.id);
-    console.log('Liste: %o', jsonMessage.list);
+    console.log('Derzeitige Liste: %o', deviceList);
+    /*console.log('Erhalten von %s:', jsonMessage.id);
+    console.log('Liste: %o', jsonMessage.list);*/
   });
 
   // Send a message
@@ -83,6 +90,16 @@ function ping(): void {
       // There is no way to catch the ping event client sided so we have to send a message.
       ws.send('ping');
     }
+  });
+
+
+  // Jedes Device bekommt einen Timeout gesetzt, damit nicht mehr verbundene Devices aus der deviceList gelöscht werden können.
+  // Somit wird geschaut ob ein Device innerhalb von 5 Sekunden reagiert hat, ansonsten wir es aus der Liste entfernt.
+  deviceList.forEach((element, index) => {
+    if (element.timout) {
+      deviceList.splice(index, 1);
+    }
+    element.timout = true;
   });
 }
 
@@ -155,17 +172,17 @@ app.get('/api', (request: express.Request, response: express.Response) => {
     console.log(request.body);
 });*/
 
-/*interface UserData {
-    playerID: string;
-    update: string;
-    deviceList: DevicePackage;
+
+// The List of all Connected Devices and their Devices in Range.
+interface DeviceList {
+  id: string;
+  devices: DeviceData[];
+  timout: boolean;
 }
 
-interface DevicePackage {
-    canvasElement: HTMLElement;
-    chart: any;
-    device: any;
-    rssi: number[];
-    lifetime: number;
-    playerID: string;
-  }*/
+// One Data-Package of a Device in Range.
+interface DeviceData {
+  id: string;
+  rssi: number;
+}
+  
