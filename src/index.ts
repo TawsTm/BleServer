@@ -23,8 +23,84 @@ let matrix: number[][] = [
   [2182, 1737, 1021, 1891, 959, 2734, 2408, 678, 0, 2329], 
   [543, 597, 1494, 1220, 2300, 923, 205, 2442, 2329, 0]
 ];
+
 // dependant on the matrix, this array has to be in correct order.
 let devices: string[] = ['Atlanta', 'Chicago', 'Denver', 'Houston', 'Los Angeles', 'Miami', 'New York', 'San Francisco', 'Seattle', 'Washington, DC'];
+
+
+let matrix2: number[][] = [];
+
+let d1: DeviceList = {id: 'a', foundDevices: [{id: 'c', rssi: 3}, {id: 'e', rssi: 2}, {id: 'g', rssi: 1}], timeout: false};
+let d2: DeviceList = {id: 'c', foundDevices: [{id: 'a', rssi: 3}, {id: 'e', rssi: 6}, {id: 'g', rssi: 7}], timeout: false};
+let d3: DeviceList = {id: 'e', foundDevices: [{id: 'a', rssi: 2}, {id: 'c', rssi: 6}, {id: 'g', rssi: 3}], timeout: false};
+let d4: DeviceList = {id: 'g', foundDevices: [{id: 'a', rssi: 1}, {id: 'c', rssi: 7}, {id: 'e', rssi: 3}], timeout: false};
+let d5: DeviceList = {id: 'a2', foundDevices: [], timeout: false};
+
+//let deviceList2: DeviceList[] = [d1, d2, d3, d4];
+
+/**
+ * 
+ * @param initDevice the deviceList with all
+ * @returns 
+ */
+function fillMatrix(initDevice: DeviceList[]): number[][] {
+  let newMatrix: number[][] = [];
+  for (let i: number = 0; i < initDevice.length; i++) {
+    // Wir nehmen an das Array ist nach id Sortiert.
+    // Jede Reihe wird einzeln befüllt.
+    let row: number[] = [];
+    //Schaue für jedes initialisierte Device an, welche Geräte es gefunden hat.
+    let counter: number = 0;
+    // Funktioniert nur, wenn die Geräteliste schon sortiert ankommt.
+    initDevice[i].foundDevices.forEach(fdevice => {
+      // Falls das Gerät in der Liste dem initialisierten Gerät entspricht setze den RSSI-Wert ein.
+      while (fdevice.id != initDevice[counter].id && counter < initDevice.length) {
+        // Check if opposite side has a Value and copy if possible.
+        row.push(0);
+        counter++;
+      }
+      if (counter > initDevice.length) {
+        throw new Error('The counter is out of bounce and one device is not set yet!');
+      } else {
+        row.push(fdevice.rssi);
+        counter++;
+      }
+    });
+    
+    // Fülle 0er auf, falls alle gespeicherten Devices schon abgearbeitet sind.
+    while (row.length < initDevice.length) {
+      row.push(0);
+    }
+    if (row.length === initDevice.length) {
+      // Wenn die Reihe genau so lang ist wie die angegebenen ID's, dann pushe
+      newMatrix.push(row);
+    } else {
+      throw new Error('The Row-length exceeded the deviceList-length!');
+    }
+  }
+
+  // Matrixkorrektur für 0-Stellen
+  // prüft um rechenleistung zu sparen nur das rechte obere eck der Matrix bis zur Hauptdiagonalen.
+  for (let i: number = 0; i < newMatrix.length - 1; i++) {
+    for (let j: number = 1 + i; j < newMatrix[i].length; j++) {
+      if (newMatrix[i][j] === 0 && newMatrix[j][i] != 0) {
+        newMatrix[i][j] = newMatrix[j][i];
+      } else if (newMatrix[j][i] === 0 && newMatrix[i][j] != 0) {
+        newMatrix[j][i] = newMatrix[i][j];
+      } else if (newMatrix[i][j] === 0 && newMatrix[j][i] === 0 && i != j) {
+        // Der Wert welcher genutzt wird, wenn keines der beiden Geräte ein Signal vom jeweils anderen erhält.
+        newMatrix[i][j] = newMatrix[j][i] = -100;
+      }
+    }
+  }
+  return newMatrix;
+}
+
+//addToDeviceList(d5);
+console.log('die Matrix: %o', fillMatrix(deviceList));
+console.log(mds_classic(fillMatrix(deviceList)));
+
+
 
 function heartbeat(this: any): void {
   this.isAlive = true;
@@ -74,13 +150,14 @@ wssP.on('connection', function connection(ws: WebSocket): void {
         // If the Client is already registered and can just send Data.
         deviceList.some(element => { 
           if (element.id === jsonMessage.id) {
-            element.devices = jsonMessage.list;
-            element.timout = false;
+            element.foundDevices = jsonMessage.list;
+            element.timeout = false;
           }
         });
       } else {
         // The Client already has an ID but is not registered in the Server anymore.
-        deviceList.push({id: jsonMessage.id, devices: jsonMessage.list, timout: false});
+        //deviceList.push({id: jsonMessage.id, foundDevices: jsonMessage.list, timeout: false});
+        addToDeviceList({id: jsonMessage.id, foundDevices: jsonMessage.list, timeout: false});
         console.log('Client first connect or reconnect after being disconnected');
       }
     }
@@ -92,6 +169,40 @@ wssP.on('connection', function connection(ws: WebSocket): void {
   // Send a message
   ws.send('Hello client!');
 });
+
+/*console.log(
+  // Sortieren nach Wert (Erst Zahlen dann Buchstaben)
+  deviceList2.sort(function(a, b) {
+    var nameA = a.id.toUpperCase(); // Groß-/Kleinschreibung ignorieren
+    var nameB = b.id.toUpperCase(); // Groß-/Kleinschreibung ignorieren
+    if (nameA < nameB) {
+      return -1;
+    }
+    if (nameA > nameB) {
+      return 1;
+    }
+    // Namen müssen gleich sein
+    return 0;
+  })
+);*/
+
+
+/**
+ * Diese Funktion sortiert das gegebene Element an die richtige Stelle im Array.
+ * (Die Funktion könnte rechnerisch verbessert werden, indem man in der mitte des Arrays anfängt und sich so zu seinem Platz hin halbiert)
+ * @param item 
+ */
+function addToDeviceList(item: DeviceList): void {
+
+  deviceList.push(item);
+  let j: number = deviceList.length - 2;
+  while ((j > -1) && (deviceList[j].id > item.id)) {
+    deviceList[j + 1] = deviceList[j];
+    j--;
+  }
+  deviceList[j + 1] = item;
+
+}
 
 function ping(): void {
   // wssP.clients.size return the amount of individual connections.
@@ -114,10 +225,10 @@ function ping(): void {
   // Jedes Device bekommt einen Timeout gesetzt, damit nicht mehr verbundene Devices aus der deviceList gelöscht werden können.
   // Somit wird geschaut ob ein Device innerhalb von 5 Sekunden reagiert hat, ansonsten wir es aus der Liste entfernt.
   deviceList.forEach((element, index) => {
-    if (element.timout) {
+    if (element.timeout) {
       deviceList.splice(index, 1);
     }
-    element.timout = true;
+    element.timeout = true;
   });
 }
 
@@ -134,8 +245,8 @@ interface ExtWebSocket extends WebSocket {
 // The List of all Connected Devices and their Devices in Range.
 interface DeviceList {
   id: string;
-  devices: DeviceData[];
-  timout: boolean;
+  foundDevices: DeviceData[];
+  timeout: boolean;
 }
 
 // One Data-Package of a Device in Range.
