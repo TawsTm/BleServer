@@ -53,17 +53,22 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
     let counter: number = 0;
     // Funktioniert nur, wenn die Geräteliste schon sortiert ankommt.
     initDevice[i].foundDevices.forEach(fdevice => {
-      // Falls das Gerät in der Liste dem initialisierten Gerät entspricht setze den RSSI-Wert ein.
-      while (fdevice.id != initDevice[counter].id && counter < initDevice.length) {
-        // Check if opposite side has a Value and copy if possible.
-        row.push(0);
-        counter++;
-      }
-      if (counter > initDevice.length) {
-        throw new Error('The counter is out of bounce and one device is not set yet!');
-      } else {
-        row.push(fdevice.rssi);
-        counter++;
+      // Prüfe ob das gefundene Gerät auch wirklich der derzeitig initialisierten Geräteliste angehört.
+      if (initDevice.some((device) =>
+        device.id === fdevice.id
+      )) {
+        // Falls das Gerät in der Liste dem initialisierten Gerät entspricht setze den RSSI-Wert ein.
+        while (fdevice.id != initDevice[counter].id && counter < initDevice.length) {
+          // Check if opposite side has a Value and copy if possible.
+          row.push(0);
+          counter++;
+        }
+        if (counter > initDevice.length) {
+          throw new Error('The counter is out of bounce and one device is not set yet!');
+        } else {
+          row.push(fdevice.rssi);
+          counter++;
+        }
       }
     });
     
@@ -98,7 +103,15 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
 
 //addToDeviceList(d5);
 console.log('die Matrix: %o', fillMatrix(deviceList));
-console.log(mds_classic(fillMatrix(deviceList)));
+setInterval(logMatrix, 2000);
+//console.log(mds_classic(fillMatrix(deviceList)));
+
+function logMatrix(): any {
+  if (deviceList.length > 0) {
+    console.log(mds_classic(fillMatrix(deviceList)));
+    return mds_classic(fillMatrix(deviceList));
+  }
+}
 
 
 
@@ -295,7 +308,7 @@ let updateGraphInterval: NodeJS.Timer = setInterval(updateGraph, 500);
 function updateGraph(): void {
   // wssP.clients.size return the amount of individual connections.
   wssC.clients.forEach(function each(ws: WebSocket) {
-      ws.send(JSON.stringify(mds_classic(matrix)));
+      ws.send(JSON.stringify(logMatrix()));
   });
 }
 
@@ -318,7 +331,7 @@ wssC.on('connection', function connection(ws: WebSocket): void {
   });
 
   // Send a message
-  ws.send(JSON.stringify(mds_classic(matrix)));
+  ws.send(JSON.stringify(logMatrix()));
 });
 
 wssC.on('close', function close(): void {
