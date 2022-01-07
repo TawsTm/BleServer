@@ -8,6 +8,7 @@ import * as numeric from 'numeric';
 
 //let idList: string[] = [];
 let deviceList: DeviceList[] = [];
+let names: string[] = [];
 
 
 // exports of the catched devices in matrix form.
@@ -66,7 +67,13 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
         if (counter > initDevice.length) {
           throw new Error('The counter is out of bounce and one device is not set yet!');
         } else {
-          row.push(fdevice.rssi);
+          if (fdevice.rssi >= -30) {
+            row.push(1);
+          } else {
+            // Gleiche aus, dass der RSSI-Wert zwischen -30 und -100 liegt, der Abstand bei -30 aber 0 betragen sollte.
+            row.push(Math.abs(fdevice.rssi + 30));
+          }
+          
           counter++;
         }
       }
@@ -108,8 +115,10 @@ setInterval(logMatrix, 2000);
 
 function logMatrix(): any {
   if (deviceList.length > 0) {
-    console.log(mds_classic(fillMatrix(deviceList)));
+    console.log(fillMatrix(deviceList));
     return mds_classic(fillMatrix(deviceList));
+  } else {
+    return [];
   }
 }
 
@@ -208,12 +217,15 @@ wssP.on('connection', function connection(ws: WebSocket): void {
 function addToDeviceList(item: DeviceList): void {
 
   deviceList.push(item);
+  names.push('');
   let j: number = deviceList.length - 2;
   while ((j > -1) && (deviceList[j].id > item.id)) {
     deviceList[j + 1] = deviceList[j];
+    names[j + 1] = names[j];
     j--;
   }
   deviceList[j + 1] = item;
+  names[j + 1] = item.id;
 
 }
 
@@ -240,6 +252,7 @@ function ping(): void {
   deviceList.forEach((element, index) => {
     if (element.timeout) {
       deviceList.splice(index, 1);
+      names.splice(index, 1);
     }
     element.timeout = true;
   });
@@ -308,7 +321,7 @@ let updateGraphInterval: NodeJS.Timer = setInterval(updateGraph, 500);
 function updateGraph(): void {
   // wssP.clients.size return the amount of individual connections.
   wssC.clients.forEach(function each(ws: WebSocket) {
-      ws.send(JSON.stringify(logMatrix()));
+      ws.send(JSON.stringify({matrix: logMatrix(), names: names}));
   });
 }
 
@@ -331,7 +344,7 @@ wssC.on('connection', function connection(ws: WebSocket): void {
   });
 
   // Send a message
-  ws.send(JSON.stringify(logMatrix()));
+  ws.send(JSON.stringify({matrix: logMatrix(), names: names}));
 });
 
 wssC.on('close', function close(): void {
