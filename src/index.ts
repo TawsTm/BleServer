@@ -177,10 +177,14 @@ wssP.on('connection', function connection(ws: WebSocket): void {
           }
         });
       } else {
-        // The Client already has an ID but is not registered in the Server anymore.
-        //deviceList.push({id: jsonMessage.id, foundDevices: jsonMessage.list, timeout: false});
-        addToDeviceList({id: jsonMessage.id, foundDevices: jsonMessage.list, timeout: false});
-        console.log('Client first connect or reconnect after being disconnected');
+        // The Client already has an ID but is not registered in the Server.
+        // The Player is just added to the List if he received some signal of another Player.
+        if (jsonMessage.list === []) {
+          addToDeviceList({id: jsonMessage.id, foundDevices: jsonMessage.list, timeout: false});
+          colorLog('green', 'Client first connect or reconnect after being disconnected');
+        } else {
+          colorLog('yellow', 'Player %s did not send any Data, maybe the Device is not advertising!', jsonMessage.id);
+        }
       }
     }
     console.log('Derzeitige Liste: %o', deviceList);
@@ -260,7 +264,7 @@ function ping(): void {
 
 wssP.on('close', function close(): void {
   clearInterval(pingInterval);
-  console.log('Connection closed!');
+  colorLog('red', 'Connection closed!');
 });
 
 // So Typescript knows, that there is an extra boolean parameter.
@@ -338,7 +342,7 @@ wssC.on('connection', function connection(ws: WebSocket): void {
   ws.on('message', function incoming(message: string): void {
     const jsonMessage: any = JSON.parse(message);
 
-    console.log('Derzeitige Liste: %o', jsonMessage);
+    colorLog('green', 'WebClient: %o', jsonMessage);
     /*console.log('Erhalten von %s:', jsonMessage.id);
     console.log('Liste: %o', jsonMessage.list);*/
   });
@@ -349,5 +353,28 @@ wssC.on('connection', function connection(ws: WebSocket): void {
 
 wssC.on('close', function close(): void {
   clearInterval(pingInterval);
-  console.log('Connection closed!');
+  colorLog('red', 'Connection closed!');
 });
+
+// !This is just for a prettier Console.log
+
+function colorLog(color: string, string: string, object?: string) {
+
+  let red = '\x1b[31m';
+  let green = '\x1b[32m';
+  let yellow = '\x1b[33m';
+
+  let standard = '\x1b[0m'; //To reset to default
+
+  let choice = '';
+
+  if (color === 'red') { //Green
+    choice = red;
+  } else if (color === 'green') {
+    choice = green;
+  } else if (color === 'yellow') {
+    choice = yellow;
+  }
+
+  console.log(choice + string + standard, object);
+}
