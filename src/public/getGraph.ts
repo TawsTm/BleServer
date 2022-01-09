@@ -12,7 +12,7 @@ const options = {
     body: ''
 };
 
-const dataWs = 'ws://localhost:2000/api';
+const dataWs = 'ws://localhost:2000';
 
 // Create WebSocket connection.
 const socket = new WebSocket(dataWs);
