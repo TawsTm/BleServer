@@ -1,8 +1,23 @@
 import * as express from 'express';
 import * as cors from 'cors';
 
+import * as localtunnel from 'localtunnel';
+
 import { WebSocketServer, WebSocket } from 'ws';
 import * as numeric from 'numeric';
+
+
+// Create the tunnel for localhost
+
+(async () => {
+  const tunnel: localtunnel.Tunnel = await localtunnel({ port: 3030, subdomain: 'blebeacon' });
+
+  colorLog('green', 'The Tunnel is running on %s', tunnel.url);
+
+  tunnel.on('close', () => {
+    colorLog('red', 'Tunnel is closed!');
+  });
+})();
 
 // Websocket approach
 
@@ -129,7 +144,7 @@ function heartbeat(this: any): void {
 }
 
 // Set up server
-const wssP: WebSocketServer = new WebSocketServer({ port: 3000 });
+const wssP: WebSocketServer = new WebSocketServer({ port: 3030 });
 
 let pingInterval: NodeJS.Timer = setInterval(ping, 5000);
 
