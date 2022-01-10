@@ -194,7 +194,7 @@ wssP.on('connection', function connection(ws: WebSocket): void {
       } else {
         // The Client already has an ID but is not registered in the Server.
         // The Player is just added to the List if he received some signal of another Player.
-        if (jsonMessage.list === []) {
+        if (!(jsonMessage.list === [])) {
           addToDeviceList({id: jsonMessage.id, foundDevices: jsonMessage.list, timeout: false});
           colorLog('green', 'Client first connect or reconnect after being disconnected');
         } else {
