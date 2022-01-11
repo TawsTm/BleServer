@@ -61,6 +61,14 @@ socket.addEventListener('error', (error) => {
 
 //setInterval(drawGraph, 500);
 
+/*m = [
+  [ -17.697596586108375, -1 ],
+  [ 20.871017496156938, 6.526468803426873 ],
+  [ -5.700960434292957, -16.738520371506528 ]
+];
+
+drawGraph();*/
+
 
 function drawGraph() {
     if (m.length > 2) {
@@ -76,16 +84,11 @@ function drawGraph() {
   
     height = svg.node().getBoundingClientRect().height;
   
+    //keys = ['0000', 'ffff', 'b7fa'];
     //keys = ['Atlanta', 'Chicago', 'Denver', 'Houston', 'Los Angeles', 'Miami', 'New York', 'San Francisco', 'Seattle', 'Washington, DC'];
 
     keys = names;
   
-    /*m = [
-        [ -17.697596586108375, counter ],
-        [ 20.871017496156938, 6.526468803426873 ],
-        [ -5.700960434292957, -16.738520371506528 ]
-      ]
-      ;*/
     points_data = m;
     console.log(m);
   
@@ -158,9 +161,15 @@ function drawGraph() {
     });
   
     enter_points.append('circle').attr({
+      fill: function(d: any, i: any) {
+        if(keys[i].length != 4) {
+          console.log('Error: Die ID eines Spielers ist keine 4 Zeichen lang!');
+        }
+        return '#7' + keys[i] + '7';
+      },
       r: 4
     });
-  
+
     enter_points.append('text').text(function(d: any, i: any) {
       return keys[i];
     }).attr({
