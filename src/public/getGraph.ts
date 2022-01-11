@@ -1,3 +1,6 @@
+// To enable correct implementation of Script-Tag in typescript
+declare let d3: any;
+
 let m: number[][] = [];
 let names: string[] = [];
 
@@ -61,7 +64,7 @@ socket.addEventListener('error', (error) => {
 
 function drawGraph() {
     if (m.length > 2) {
-    var MARGIN, enter_points, height, indicators, keys, links, links_data, max_x, max_y, min_x, min_y, points, points_data, svg, width, x, y;
+    var MARGIN: any, enter_points: any, height: any, indicators: any, keys: any, links: any, links_data: any, max_x: any, max_y: any, min_x: any, min_y: any, points: any, points_data: any, svg: any, width: any, x: any, y: any;
   
     MARGIN = 100;
   
@@ -86,19 +89,19 @@ function drawGraph() {
     points_data = m;
     console.log(m);
   
-    min_x = d3.min(points_data, function(d) {
+    min_x = d3.min(points_data, function(d: any) {
       return d[0];
     });
   
-    max_x = d3.max(points_data, function(d) {
+    max_x = d3.max(points_data, function(d: any) {
       return d[0];
     });
   
-    min_y = d3.min(points_data, function(d) {
+    min_y = d3.min(points_data, function(d: any) {
       return d[1];
     });
   
-    max_y = d3.max(points_data, function(d) {
+    max_y = d3.max(points_data, function(d: any) {
       return d[1];
     });
   
@@ -108,10 +111,9 @@ function drawGraph() {
   
     links_data = [];
   
-    points_data.forEach(function(p1, i1) {
-      var array;
-      array = [];
-      points_data.forEach(function(p2, i2) {
+    points_data.forEach(function(p1: any, i1: any) {
+      var array: any = [];
+      points_data.forEach(function(p2: any, i2: any) {
         if (i1 !== i2) {
           return array.push({
             source: p1,
@@ -127,16 +129,16 @@ function drawGraph() {
   
     links.enter().append('line').attr({
       "class": 'link',
-      x1: function(d) {
+      x1: function(d: any) {
         return x(d.source[0]);
       },
-      y1: function(d) {
+      y1: function(d: any) {
         return y(d.source[1]);
       },
-      x2: function(d) {
+      x2: function(d: any) {
         return x(d.target[0]);
       },
-      y2: function(d) {
+      y2: function(d: any) {
         return y(d.target[1]);
       }
     });
@@ -145,7 +147,7 @@ function drawGraph() {
   
     enter_points = points.enter().append('g').attr({
       "class": 'point',
-      transform: function(d) {
+      transform: function(d: any) {
         return "translate(" + (x(d[0])) + "," + (y(d[1])) + ")";
       }
     });
@@ -159,14 +161,14 @@ function drawGraph() {
       r: 4
     });
   
-    enter_points.append('text').text(function(d, i) {
+    enter_points.append('text').text(function(d: any, i: any) {
       return keys[i];
     }).attr({
       y: 12,
       dy: '0.35em'
     });
   
-    enter_points.append('title').text(function(d, i) {
+    enter_points.append('title').text(function(d: any, i: any) {
       return d[0] + ", " + d[1];
     });
   
@@ -187,11 +189,11 @@ function drawGraph() {
       }
     });*/
   
-    enter_points.on('click', function(d) {
-      links.classed('visible', function(l) {
+    enter_points.on('click', function(d: any) {
+      links.classed('visible', function(l: any) {
         return l.source === d;
       });
-      return indicators.classed('visible', function(l) {
+      return indicators.classed('visible', function(l: any) {
         return l.source === d;
       });
     });
