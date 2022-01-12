@@ -150,8 +150,8 @@ let pingInterval: NodeJS.Timer = setInterval(ping, 5000);
 
 // To give every new connected client its unique id.
 function getUniqueID(): string {
-  // There are 65535 possible ID's with 4 Hex-Numbers. Padding with 0 if code is too short.
-  let newID: string = Math.floor(Math.random() * 65535).toString(16).padStart(4, '0');
+  // There are 16777215 possible ID's with 6 Hex-Numbers. Padding with 0 if code is too short.
+  let newID: string = Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
 
   if (deviceList.some(element => element.id === newID)) {
     newID = getUniqueID();
