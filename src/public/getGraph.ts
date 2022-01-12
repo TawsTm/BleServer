@@ -29,20 +29,19 @@ let counter = true;
 
 // Listen for messages
 socket.addEventListener('message', (event) => {
-    //console.log('Message from server: ', event.data);
-    if (event.data instanceof Blob) {
-        console.log('DataPackage is empty!');
-    } else {
-        let json = JSON.parse(event.data);
-        console.log(json);
-        m = json.matrix;
-        names = json.names;
-        if (m.length > 2) {
-            console.log('This is the Matrix: %o', m);
-            drawGraph();
-        }
+  //console.log('Message from server: ', event.data);
+  if (event.data instanceof Blob) {
+    console.log('DataPackage is empty!');
+  } else {
+    let json = JSON.parse(event.data);
+    console.log(json);
+    m = json.matrix;
+    names = json.names;
+    if (m.length > 2) {
+      //console.log('This is the Matrix: %o', m);
+      drawGraph();
     }
-    
+  }
 });
 
 // Connection getting closed
@@ -165,7 +164,7 @@ function drawGraph() {
         if(keys[i].length != 4) {
           console.log('Error: Die ID eines Spielers ist keine 4 Zeichen lang!');
         }
-        return '#7' + keys[i] + '7';
+        return '#' +  keys[i];
       },
       r: 4
     });
