@@ -173,7 +173,8 @@ function drawGraph() {
       return keys[i];
     }).attr({
       y: 12,
-      dy: '0.35em'
+      dy: '0.35em',
+      style: 'font-size: 1em'
     });
   
     enter_points.append('title').text(function(d: any, i: any) {
