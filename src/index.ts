@@ -124,20 +124,20 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
 }
 
 //addToDeviceList(d5);
-console.log('die Matrix: %o', fillMatrix(deviceList));
-setInterval(logMatrix, 2000);
+//console.log('die Matrix: %o', fillMatrix(deviceList));
+//setInterval(logMatrix, 2000);
 //console.log(mds_classic(fillMatrix(deviceList)));
 
 function logMatrix(): any {
-  if (deviceList.length > 0) {
+  // TODO There could be 3 Devices but the Gradient would throw an error.
+  if (deviceList.length > 3) {
     console.log(fillMatrix(deviceList));
-    return mds_classic(fillMatrix(deviceList));
+    // Fill Matrix -> Use MDS -> Correct Coordinates in Result
+    return correctGraph(mds_classic(fillMatrix(deviceList)));
   } else {
     return [];
   }
 }
-
-
 
 function heartbeat(this: any): void {
   this.isAlive = true;
@@ -151,7 +151,8 @@ let pingInterval: NodeJS.Timer = setInterval(ping, 5000);
 // To give every new connected client its unique id.
 function getUniqueID(): string {
   // There are 16777215 possible ID's with 6 Hex-Numbers. Padding with 0 if code is too short.
-  let newID: string = Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  // The first 4 are reserved for fix Devices therefore we start at 4 till 16777214.
+  let newID: string = (4 + Math.floor(Math.random() * 16777211)).toString(16).padStart(6, '0');
 
   if (deviceList.some(element => element.id === newID)) {
     newID = getUniqueID();
@@ -340,7 +341,7 @@ let updateGraphInterval: NodeJS.Timer = setInterval(updateGraph, 500);
 function updateGraph(): void {
   // wssP.clients.size return the amount of individual connections.
   wssC.clients.forEach(function each(ws: WebSocket) {
-      ws.send(JSON.stringify({matrix: logMatrix(), names: names}));
+      ws.send(JSON.stringify({coordinatePoints: logMatrix(), names: names}));
   });
 }
 
@@ -370,6 +371,128 @@ wssC.on('close', function close(): void {
   clearInterval(pingInterval);
   colorLog('red', 'Connection closed!');
 });
+
+//*********************************************Graph Correction *******************************************************/
+
+/**
+   * This function allows to Correct the Graph Position on the Coordiante-System.
+   * The first 4 Point are used to Align the Graph on the X and Y-Axis. Therefore 
+   * the 4 Points should represent a sqaure and the 1st and 4th Point should be on 
+   * opposite corners aswell as 2 and 3.
+   * @param {number[][]} _points_data The Points on the Coordiante-System that need correction
+   * @returns The new cerrocted Points.
+   */
+function correctGraph(_points_data: number[][]): number[][] {
+  // Mittelpunkt zwischen Punkt 1 und 2
+  const m1 = [(_points_data[0][0] + _points_data[1][0])/2, (_points_data[0][1] + _points_data[1][1])/2];
+
+  // Mittelpunkt zwischen Punkt 3 und 4
+  const m2 = [(_points_data[2][0] + _points_data[3][0])/2, (_points_data[2][1] + _points_data[3][1])/2];
+
+  // Mittelpunkt zwischen Punkt 1 und 3
+  const m3 = [(_points_data[0][0] + _points_data[2][0])/2, (_points_data[0][1] + _points_data[2][1])/2];
+
+  // Mittelpunkt zwischen Punkt 2 und 4
+  const m4 = [(_points_data[3][0] + _points_data[1][0])/2, (_points_data[3][1] + _points_data[1][1])/2];
+
+  // Would show the points for the lines which determine the Gradient. If App crashes, note comments in drawGraph()
+  /*_points_data.push(m1);
+  _points_data.push(m2);
+  _points_data.push(m3);
+  _points_data.push(m4);*/
+
+  // Steigung der m-Punkte berechnen
+  let steigung1 = getGradient(m1, m2);
+  let steigung2 = getGradient(m3, m4);
+
+  // Den Radialen Grad der Steigung für beide geraden berechnen
+  var degreeRad1 = Math.atan(steigung1);
+  // In Radiant 90° are 1,5708, so we turn it around 90 degrees
+  var degreeRad2 = Math.atan(steigung2) + (Math.PI/2);
+
+  // Get the average degree to the x-Axis of both lines
+  let degreeRad = ((modulo(degreeRad1, Math.PI) + modulo(degreeRad2, Math.PI))/2);
+
+
+  /*if ((degreeRad1 > 0 && degreeRad2 < 0) || (degreeRad1 < 0 && degreeRad2 > 0)) {
+    degreeRad += 1.5708;
+  }*/
+  
+  console.log('Graph wurde um %s° gedreht', radians_to_degrees(degreeRad));
+
+  // Falls m1 vor m2 liegt drehe den Winkel um 180°
+  if (m2[0] > m1[0]) {
+    degreeRad1 += Math.PI;
+  }
+
+  // Falls m3 vor m4 liegt drehe den Winkel um 180°
+  if (m4[0] > m3[0]) {
+    degreeRad2 += Math.PI;
+  } else if(m2[0] > m1[0]) {
+    degreeRad += Math.PI;
+  }
+
+  // Spiegelt den Graph, wenn der Winkel zwischen den Geradenrichtungen über 90° liegt.
+  // Die Radiant-Werte müsste immer ungefähr eine Differenz von 2*1.57 aufweisen, falls die Punkte gespiegelt sind.
+  // Mein Treshhold sind 1.57, d.h. alles was über 90° abweicht wird gespiegelt.
+  // TODO Hier stimmt die umrechnung nicht! Man muss testen, welcher Punkt vor welchem liegt, da die Steigung nicht über 90 grad gehen kann.
+  if (Math.abs(degreeRad1 - degreeRad2) >= 1.5708) {
+    console.log('Die Punkte wurden gespiegelt');
+    for (let i = 0; i < _points_data.length; i++) {
+      _points_data[i][0] = -_points_data[i][0];
+    }
+    degreeRad = -degreeRad;
+  }
+
+  return rotate(degreeRad, _points_data);
+}
+
+/**
+   * Hier wird die Steigung zwischen zwei Punkten berechnet.
+   */
+ function getGradient(_point1: number[], _point2: number[]) {
+  return ((_point2[1] - _point1[1]) / (_point2[0] - _point1[0]));
+}
+
+/**
+ * Hier wird eine Liste von Punkten um einen übergebenen Winkel gedreht.
+ * @param {number} _rotation der Grad der Rotation aller Punkte um die x-Achse
+ * @param {number[][]} _points Eine Liste der Punkte, welche gedreht werden sollen
+ * @returns 
+ */
+function rotate(_rotation: number, _points: number[][]) {
+  const rotateBack = -_rotation;
+  let newPoints: number[][] = [];
+  _points.forEach(point => {
+    const x = point[0];
+    const y = point[1];
+    const newX = x*Math.cos(rotateBack) - y*Math.sin(rotateBack);
+    const newY = x*Math.sin(rotateBack) + y*Math.cos(rotateBack);
+    const newPoint = [newX, newY];
+    newPoints.push(newPoint);
+  });
+  return newPoints;
+}
+
+/**
+ * Converts radiant to degree
+ * @param radians the radiant to be converted
+ * @returns the value in degrees
+ */
+function radians_to_degrees(radians: number) {
+  var pi = Math.PI;
+  return radians * (180/pi);
+}
+
+/**
+ * Modulo-extension for negative numbers.
+ * @param {number} _m the number wich you want to use to Modulo on
+ * @param {number} _n the cap
+ * @returns modulo opertaion of m%n.
+ */
+function modulo(_m: number, _n: number) {
+  return ((_m % _n) + _n) % _n;
+}
 
 // !This is just for a prettier Console.log
 
