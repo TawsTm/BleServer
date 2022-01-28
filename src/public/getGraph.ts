@@ -41,12 +41,13 @@ socket.addEventListener('message', (event) => {
     if (coordinates && coordinates.length > 2) {
       
       // If the first 4 Devices are set, go correct the Graph.
-      if (!(json.names[4] == '000003')) {
+      if (!(json.names[3] == '000003')) {
         console.log('Es sind keine 4 Devices als Eckpunkte eingetragen');
         corrected = false;
         drawGraph(coordinates, names);
       } else {
         corrected = true;
+        drawGraph(coordinates, names);
       }
     } else {
       console.log('Es sind nicht mindestens 3 Geräte verbunden.')
