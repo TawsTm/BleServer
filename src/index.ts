@@ -197,20 +197,29 @@ wssP.on('connection', function connection(ws: WebSocket): void {
         // The Player is just added to the List if he received some signal of another Player.
         if (!(jsonMessage.list === [])) {
           addToDeviceList({id: jsonMessage.id, foundDevices: jsonMessage.list, timeout: false});
-          colorLog('green', 'Client first connect or reconnect after being disconnected');
+          colorLog('green', 'Client first connect or reconnect after being disconnected: %o', jsonMessage.id);
         } else {
           colorLog('yellow', 'Player %s did not send any Data, maybe the Device is not advertising!', jsonMessage.id);
         }
       }
     }
-    console.log('Derzeitige Liste: %o', deviceList);
-    /*console.log('Erhalten von %s:', jsonMessage.id);
-    console.log('Liste: %o', jsonMessage.list);*/
   });
 
   // Send a message
   ws.send('Hello client!');
 });
+
+function showDeviceList(): string {
+  let completeString = 'Derzeit verbundene Geräte:\x1b[33m ' + wssP.clients.size + '\x1b[0m   ';
+  deviceList.forEach(device => {
+    let singleDevice = '|\x1b[32m ' + device.id + ': \x1b[0m';
+    device.foundDevices.forEach(foundDevice => {
+      singleDevice += foundDevice.id + ': ' + foundDevice.rssi + ', ';
+    });
+    completeString += singleDevice;
+  });
+  return completeString;
+}
 
 /*console.log(
   // Sortieren nach Wert (Erst Zahlen dann Buchstaben)
@@ -251,7 +260,7 @@ function addToDeviceList(item: DeviceList): void {
 
 function ping(): void {
   // wssP.clients.size return the amount of individual connections.
-  console.log('Zurzeit sind so viele Geräte verbunden: ', wssP.clients.size);
+  process.stdout.write('' + showDeviceList() + '\r');
   wssP.clients.forEach(function each(ws: WebSocket) {
     //need to convert it to be Typescript conform
     const extWs: ExtWebSocket = ws as ExtWebSocket;
@@ -513,6 +522,10 @@ function colorLog(color: string, string: string, object?: string) {
   } else if (color === 'yellow') {
     choice = yellow;
   }
-
-  console.log(choice + string + standard, object);
+  if(object) {
+    console.log(choice + string + standard, object);
+    return;
+  }
+  console.log(choice + string + standard);
+  
 }
