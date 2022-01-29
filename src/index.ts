@@ -82,12 +82,13 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
         if (counter > initDevice.length) {
           throw new Error('The counter is out of bounce and one device is not set yet!');
         } else {
-          if (fdevice.rssi >= -30) {
+          row.push(fdevice.rssi);
+          /*if (fdevice.rssi >= -30) {
             row.push(1);
           } else {
             // Gleiche aus, dass der RSSI-Wert zwischen -30 und -100 liegt, der Abstand bei -30 aber 0 betragen sollte.
             row.push(Math.abs(fdevice.rssi + 30));
-          }
+          }*/
           
           counter++;
         }
@@ -107,7 +108,7 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
   }
 
   // Matrixkorrektur für 0-Stellen
-  // prüft um rechenleistung zu sparen nur das rechte obere eck der Matrix bis zur Hauptdiagonalen.
+  // prüft um rechenleistung zu sparen nur das rechte obere eck der Matrix bis zur Hauptdiagonalen mit dem darunter liegenden Eck.
   for (let i: number = 0; i < newMatrix.length - 1; i++) {
     for (let j: number = 1 + i; j < newMatrix[i].length; j++) {
       if (newMatrix[i][j] === 0 && newMatrix[j][i] != 0) {
@@ -116,7 +117,8 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
         newMatrix[j][i] = newMatrix[i][j];
       } else if (newMatrix[i][j] === 0 && newMatrix[j][i] === 0 && i != j) {
         // Der Wert welcher genutzt wird, wenn keines der beiden Geräte ein Signal vom jeweils anderen erhält.
-        newMatrix[i][j] = newMatrix[j][i] = -100;
+        // newMatrix[i][j] = newMatrix[j][i] = -100;
+        newMatrix[i][j] = newMatrix[j][i] = 30;
       }
     }
   }
@@ -291,6 +293,13 @@ wssP.on('close', function close(): void {
   clearInterval(pingInterval);
   colorLog('red', 'Connection closed!');
 });
+
+// Corrects the RSSI-Signal to linear mapping
+function rssiToLinear(signalLevelInDb: number): number {
+  // Frequenz 2.4 GHz
+  const exp = (27.55 - (20 * Math.log10(24000)) + Math.abs(signalLevelInDb)) / 20.0;
+  return Math.pow(10.0, exp);
+}
 
 // So Typescript knows, that there is an extra boolean parameter.
 interface ExtWebSocket extends WebSocket {
