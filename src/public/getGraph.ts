@@ -200,9 +200,9 @@ function drawGraph(_points_data: number[][], _names: string[]) {
 
   enter_points.append('text').text(function(d: any, i: number) {
     // TODO if the Code is in use p1-p4 should be named '' (nothing) so that they are clearly visible as markers
-    if(i < 4 && corrected) {
+    /*if(i < 4 && corrected) {
       return '';
-    }
+    }*/
     return keys[i];
   }).attr({
     y: 12,
