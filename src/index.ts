@@ -6,6 +6,7 @@ import * as localtunnel from 'localtunnel';
 import { WebSocketServer, WebSocket } from 'ws';
 import * as numeric from 'numeric';
 
+import * as fs from 'fs';
 
 // Create the tunnel for localhost
 
@@ -24,6 +25,8 @@ import * as numeric from 'numeric';
 //let idList: string[] = [];
 let deviceList: DeviceList[] = [];
 let names: string[] = [];
+
+let logData = setInterval(dataToLog, 500)
 
 
 // exports of the catched devices in matrix form.
@@ -185,6 +188,7 @@ wssP.on('connection', function connection(ws: WebSocket): void {
       //deviceList.push(jsonMessage);
       console.log('new ID was send!');
     } else {
+      
       if (deviceList.some(element => element.id === jsonMessage.id)) {
         // *** Grenzfall: ID ist jemand anderem zugeteilt und man loggt sich mit der eigenen ID neue ein.***
         // If the Client is already registered and can just send Data.
@@ -537,4 +541,26 @@ function colorLog(color: string, string: string, object?: string) {
   }
   console.log(choice + string + standard);
   
+}
+
+function dataToLog() {
+  if(deviceList.length !== 0) {
+    fs.appendFile('./data.log', JSON.stringify(deviceList) + '\n', err => {
+      if (err) {
+        console.error(err)
+        return
+      }
+    });
+  }
+}
+
+function replacer(key: any, value: any) {
+  if(value instanceof Map) {
+    return {
+      dataType: 'Map',
+      value: Array.from(value.entries()), // or with spread: value: [...value]
+    };
+  } else {
+    return value;
+  }
 }
