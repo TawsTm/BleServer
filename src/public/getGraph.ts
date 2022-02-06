@@ -2,6 +2,21 @@
 declare let d3: any;
 
 let corrected: boolean = false;
+let matrix: number[][] = [];
+let deviceList: DeviceList[] = [];
+
+// The List of all Connected Devices and their Devices in Range.
+interface DeviceList {
+  id: string;
+  foundDevices: DeviceData[];
+  timeout: boolean;
+}
+
+// One Data-Package of a Device in Range.
+interface DeviceData {
+  id: string;
+  rssi: number;
+}
 
 
 // ***** Server Communication *****
@@ -33,22 +48,22 @@ socket.addEventListener('message', (event) => {
     console.log('DataPackage is empty!');
   } else {
     let json = JSON.parse(event.data);
-    console.log(json);
+    //console.log(json);
     const coordinates = json.coordinatePoints;
     const names = json.names;
-    console.log(names, coordinates);
+    matrix = json.matrix;
+    deviceList = json.deviceList;
     
-    if (coordinates && coordinates.length > 2) {
+    if (coordinates && coordinates.length >= 2) {
       
       // If the first 4 Devices are set, go correct the Graph.
-      if (!(json.names[3] == '000003')) {
-        console.log('Es sind keine 4 Devices als Eckpunkte eingetragen');
+      if (!(json.names[2] == '000002')) {
+        console.log('Es sind keine 3 Devices als Eckpunkte eingetragen');
         corrected = false;
-        drawGraph(coordinates, names);
       } else {
         corrected = true;
-        drawGraph(coordinates, names);
       }
+      drawGraph(coordinates, names);
     } else {
       console.log('Es sind nicht mindestens 3 Geräte verbunden.')
     }
@@ -94,12 +109,14 @@ function drawGraph(_points_data: number[][], _names: string[]) {
   height = svg.node().getBoundingClientRect().height;
 
   // Berechnung für die Seitenränder, damit Ausrichtungsecken immer ein Quadrat bilden.
+  /* Damit der Graph mit einem gleichseitigen Dreieck richtig angezeigt wird, 
+     muss die Höhe um Wurzel(3)/2 verringert werden, bzw. die Margin um den Counterfaktor 1.15472 erhöht werden.*/
   if (width >= height) {
-    MARGINY = height/5;
-    MARGINX = height/5 + ((width - height)/2);
+    MARGINY = height/3 * 1.15473;
+    MARGINX = height/3 + ((width - height)/2);
   } else {
-    MARGINX = width/5;
-    MARGINY = width/5 + ((height - width)/2);
+    MARGINX = width/3 * 1.15473;
+    MARGINY = width/3 + ((height - width)/2);
   }
 
   keys = _names;
@@ -111,7 +128,7 @@ function drawGraph(_points_data: number[][], _names: string[]) {
   // The smallest and biggest x-Value is set.
   let corner_points: number[][];
   if (corrected) {
-    corner_points = points_data.slice(0,4);
+    corner_points = points_data.slice(0,3);
   } else {
     corner_points = points_data;
   }
@@ -188,7 +205,7 @@ function drawGraph(_points_data: number[][], _names: string[]) {
 
   enter_points.append('circle').attr({
     fill: function(d: any, i: number) {
-      if(i < 4 && corrected) {
+      if(i < 3 && corrected) {
         return '#ff0000';
       } else if (keys[i].length != 6) {
         console.log('Error: Die ID eines Spielers ist keine 4 Zeichen lang!');
@@ -239,4 +256,9 @@ function drawGraph(_points_data: number[][], _names: string[]) {
     });
   });
 
+}
+
+function printMatrix() {
+  console.table(matrix)
+  console.table(deviceList);
 }

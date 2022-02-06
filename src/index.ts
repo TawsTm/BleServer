@@ -44,7 +44,7 @@ let matrix: number[][] = [
 ];
 
 // dependant on the matrix, this array has to be in correct order.
-let devices: string[] = ['Atlanta', 'Chicago', 'Denver', 'Houston', 'Los Angeles', 'Miami', 'New York', 'San Francisco', 'Seattle', 'Washington, DC'];
+/*let devices: string[] = ['Atlanta', 'Chicago', 'Denver', 'Houston', 'Los Angeles', 'Miami', 'New York', 'San Francisco', 'Seattle', 'Washington, DC'];
 
 
 let matrix2: number[][] = [];
@@ -53,7 +53,7 @@ let d1: DeviceList = {id: 'a', foundDevices: [{id: 'c', rssi: 3}, {id: 'e', rssi
 let d2: DeviceList = {id: 'c', foundDevices: [{id: 'a', rssi: 3}, {id: 'e', rssi: 6}, {id: 'g', rssi: 7}], timeout: false};
 let d3: DeviceList = {id: 'e', foundDevices: [{id: 'a', rssi: 2}, {id: 'c', rssi: 6}, {id: 'g', rssi: 3}], timeout: false};
 let d4: DeviceList = {id: 'g', foundDevices: [{id: 'a', rssi: 1}, {id: 'c', rssi: 7}, {id: 'e', rssi: 3}], timeout: false};
-let d5: DeviceList = {id: 'a2', foundDevices: [], timeout: false};
+let d5: DeviceList = {id: 'a2', foundDevices: [], timeout: false};*/
 
 //let deviceList2: DeviceList[] = [d1, d2, d3, d4];
 
@@ -85,7 +85,7 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
         if (counter > initDevice.length) {
           throw new Error('The counter is out of bounce and one device is not set yet!');
         } else {
-          row.push(fdevice.rssi);
+          row.push(fdevice.linearRssi);
           /*if (fdevice.rssi >= -30) {
             row.push(1);
           } else {
@@ -135,10 +135,10 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
 
 function logMatrix(): any {
   // TODO There could be 3 Devices but the Gradient would throw an error.
-  if (deviceList.length > 3) {
+  if (deviceList.length >= 3) {
     console.log(fillMatrix(deviceList));
     // Fill Matrix -> Use MDS -> Correct Coordinates in Result
-    return correctGraph(mds_classic(fillMatrix(deviceList)));
+    return correctThreePointGraph(mds_classic(fillMatrix(deviceList)));
   } else {
     return [];
   }
@@ -220,7 +220,7 @@ function showDeviceList(): string {
   deviceList.forEach(device => {
     let singleDevice = '|\x1b[32m ' + device.id + ': \x1b[0m';
     device.foundDevices.forEach(foundDevice => {
-      singleDevice += foundDevice.id + ': ' + foundDevice.rssi + ', ';
+      singleDevice += foundDevice.id + ': ' + foundDevice.rawRssi + ', ';
     });
     completeString += singleDevice;
   });
@@ -299,11 +299,11 @@ wssP.on('close', function close(): void {
 });
 
 // Corrects the RSSI-Signal to linear mapping
-function rssiToLinear(signalLevelInDb: number): number {
+/*function rssiToLinear(signalLevelInDb: number): number {
   // Frequenz 2.4 GHz
   const exp = (27.55 - (20 * Math.log10(24000)) + Math.abs(signalLevelInDb)) / 20.0;
   return Math.pow(10.0, exp);
-}
+}*/
 
 // So Typescript knows, that there is an extra boolean parameter.
 interface ExtWebSocket extends WebSocket {
@@ -320,7 +320,8 @@ interface DeviceList {
 // One Data-Package of a Device in Range.
 interface DeviceData {
   id: string;
-  rssi: number;
+  linearRssi: number;
+  rawRssi: number;
 }
 
 //*************************************From now on the Supervisor Server************************************** */
@@ -363,7 +364,7 @@ let updateGraphInterval: NodeJS.Timer = setInterval(updateGraph, 500);
 function updateGraph(): void {
   // wssP.clients.size return the amount of individual connections.
   wssC.clients.forEach(function each(ws: WebSocket) {
-      ws.send(JSON.stringify({coordinatePoints: logMatrix(), names: names}));
+      ws.send(JSON.stringify({coordinatePoints: logMatrix(), names: names, matrix: fillMatrix(deviceList), deviceList: deviceList}));
   });
 }
 
@@ -386,7 +387,7 @@ wssC.on('connection', function connection(ws: WebSocket): void {
   });
 
   // Send a message
-  ws.send(JSON.stringify({matrix: logMatrix(), names: names}));
+  ws.send(JSON.stringify({coordinatePoints: logMatrix(), names: names, matrix: fillMatrix(deviceList), deviceList: deviceList}));
 });
 
 wssC.on('close', function close(): void {
@@ -398,13 +399,112 @@ wssC.on('close', function close(): void {
 
 /**
    * This function allows to Correct the Graph Position on the Coordiante-System.
+   * The first 3 Point are used to Align the Graph on the X and Y-Axis. Therefore 
+   * the 3 Points should represent an equilateral triangle.
+   * @param {number[][]} _points_data The Points on the Coordiante-System that need correction
+   * @returns The new cerrocted Points.
+   */
+function correctThreePointGraph(_points_data: number[][]): number[][] {
+  let minXpointer: number;
+  let maxXpointer: number;
+
+  _points_data.forEach((point, index) => {
+    if(index === 3) {
+      return;
+    }
+    if(minXpointer === undefined || (point[0] < _points_data[minXpointer][0])) {
+      minXpointer = index;
+    }
+    if(maxXpointer === undefined || (point[0] > _points_data[maxXpointer][0])) {
+      maxXpointer = index;
+    }
+  })
+
+  const middlePoint = _points_data[(3 - minXpointer - maxXpointer)];
+
+  // Check if mirroring is needed.
+  if(_points_data[minXpointer][1] < middlePoint[1]) {
+    if(!(3-minXpointer-maxXpointer === modulo((minXpointer + 1), 3))) {
+      // Hier wird gespiegelt
+      for (let i = 0; i < _points_data.length; i++) {
+        _points_data[i][0] = -_points_data[i][0];
+      }
+    }
+  } else {
+    if(!(3-minXpointer-maxXpointer === modulo((minXpointer - 1), 3))) {
+      // Hier wird gespiegelt
+      for (let i = 0; i < _points_data.length; i++) {
+        _points_data[i][0] = -_points_data[i][0];
+      }
+    }
+  }
+
+  // Mittelpunkt zwischen Punkt 1 und 2
+  const m1 = [(_points_data[0][0] + _points_data[1][0])/2, (_points_data[0][1] + _points_data[1][1])/2];
+
+  // Would show the points for the lines which determine the Gradient. If App crashes, note comments in drawGraph()
+  _points_data.splice(3, 0, m1);
+
+  // Check if the Graph must be turned, so that both lines show in positive x-Direction.
+  // That is needed to calculate the turning angle to the x-Axis.
+  let angle = 0;
+
+  // If 000002.x < m1.x and 000001.x < 000000.x
+  if(_points_data[2][0] < m1[0] && _points_data[1][0] < _points_data[0][0]) {
+    // Turn 180°
+    angle += Math.PI;
+  } else {
+    // If 000002.x < m1.x
+    if(_points_data[2][0] < m1[0]) {
+      // Turn 90°
+      angle += Math.PI/2;
+      // If 000001.x < 000000.x
+    } else if(_points_data[1][0] < _points_data[0][0]) {
+      // Turn -90°
+      angle -= Math.PI/2;
+    }
+  }
+
+  // Wenn die Steigung bei beiden negativ ist, kann es zu einem negativ Problem bei der späteren Steigungsberechnung kommen.
+  // Deswegen werden 90° dazugerechnet um das ganze auszugleichen.
+  if((getGradient(_points_data[0], _points_data[1]) < 0.0) && (getGradient(_points_data[3], _points_data[2]) < 0.0)) {
+    angle += Math.PI/2;
+  }
+
+  _points_data = rotate(angle, _points_data);
+
+  // Steigung der Strecke (Punkt1, Punkt2) berechnen.
+  let steigung1 = getGradient(_points_data[0], _points_data[1]);
+  // Steigung der Strecke (m1, Punkt3) berechnen.
+  let steigung2 = getGradient(_points_data[3], _points_data[2]);
+
+  // Den Radialen Grad der Steigung für beide geraden berechnen
+  let degreeRad1 = Math.atan(steigung1);
+  // In Radiant 90° are 1,5708, so we turn it around 90 degrees
+
+  let degreeRad2 = Math.atan(steigung2) + (Math.PI/2);
+
+  // Get the average degree to the x-Axis of both lines
+  // let degreeRad = ((degreeRad1 + degreeRad2) / 2) - (Math.PI/2);
+  let degreeRad = ((modulo(degreeRad1, Math.PI) + modulo(degreeRad2, Math.PI))/2);
+  
+  //console.log('Graph wurde um %s° gedreht', radians_to_degrees(-degreeRad));
+
+  _points_data.splice(3, 1);
+
+  // negative cause the positive shows the positiv distance to the x-Axis.
+  return rotate(-degreeRad, _points_data);
+}
+
+/**
+   * This function allows to Correct the Graph Position on the Coordiante-System.
    * The first 4 Point are used to Align the Graph on the X and Y-Axis. Therefore 
    * the 4 Points should represent a sqaure and the 1st and 4th Point should be on 
    * opposite corners aswell as 2 and 3.
    * @param {number[][]} _points_data The Points on the Coordiante-System that need correction
    * @returns The new cerrocted Points.
    */
-function correctGraph(_points_data: number[][]): number[][] {
+function correctFourPointGraph(_points_data: number[][]): number[][] {
   // Mittelpunkt zwischen Punkt 1 und 2
   const m1 = [(_points_data[0][0] + _points_data[1][0])/2, (_points_data[0][1] + _points_data[1][1])/2];
 
@@ -483,13 +583,13 @@ function correctGraph(_points_data: number[][]): number[][] {
  * @returns 
  */
 function rotate(_rotation: number, _points: number[][]) {
-  const rotateBack = -_rotation;
+  // const rotateBack = -_rotation;
   let newPoints: number[][] = [];
   _points.forEach(point => {
     const x = point[0];
     const y = point[1];
-    const newX = x*Math.cos(rotateBack) - y*Math.sin(rotateBack);
-    const newY = x*Math.sin(rotateBack) + y*Math.cos(rotateBack);
+    const newX = x*Math.cos(_rotation) - y*Math.sin(_rotation);
+    const newY = x*Math.sin(_rotation) + y*Math.cos(_rotation);
     const newPoint = [newX, newY];
     newPoints.push(newPoint);
   });
@@ -545,22 +645,11 @@ function colorLog(color: string, string: string, object?: string) {
 
 function dataToLog() {
   if(deviceList.length !== 0) {
-    fs.appendFile('./data.log', JSON.stringify(deviceList) + '\n', err => {
+    fs.appendFile('../data.log', JSON.stringify(deviceList) + '\n', err => {
       if (err) {
         console.error(err)
         return
       }
     });
-  }
-}
-
-function replacer(key: any, value: any) {
-  if(value instanceof Map) {
-    return {
-      dataType: 'Map',
-      value: Array.from(value.entries()), // or with spread: value: [...value]
-    };
-  } else {
-    return value;
   }
 }
