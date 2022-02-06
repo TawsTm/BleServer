@@ -8,8 +8,34 @@ import * as numeric from 'numeric';
 
 import * as fs from 'fs';
 
-// Create the tunnel for localhost
+// Ask for Distance of Triangle
+let givenDistance: number = 0;
+const readline = require('readline');
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
+question();
+
+function question() {
+  rl.question('What distance do the triangle devices show in average?\n', function (distance: string) {
+    let distanceNumber = Number(distance);
+    if(distance) {
+      givenDistance = distanceNumber;
+      setInterval(showDevices, 2000);
+    } else {
+      question();
+    }
+    rl.close();
+  })
+
+  rl.on('close', function() {
+    console.log('Distance is set to: ' + givenDistance);
+  })
+}
+
+// Create the tunnel for localhost
 (async () => {
   const tunnel: localtunnel.Tunnel = await localtunnel({ port: 3030, subdomain: 'blebeacon' });
 
@@ -28,20 +54,6 @@ let names: string[] = [];
 
 let logData = setInterval(dataToLog, 500)
 
-
-// exports of the catched devices in matrix form.
-let matrix: number[][] = [
-  [0, 587, 1212, 701, 1936, 604, 748, 2139, 2182, 543], 
-  [587, 0, 920, 940, 1745, 1188, 713, 1858, 1737, 597], 
-  [1212, 920, 0, 879, 831, 1726, 1631, 949, 1021, 1494], 
-  [701, 940, 879, 0, 1374, 968, 1420, 1645, 1891, 1220], 
-  [1936, 1745, 831, 1374, 0, 2339, 2451, 347, 959, 2300], 
-  [604, 1188, 1726, 968, 2339, 0, 1092, 2594, 2734, 923], 
-  [748, 713, 1631, 1420, 2451, 1092, 0, 2571, 2408, 205], 
-  [2139, 1858, 949, 1645, 347, 2594, 2571, 0, 678, 2442], 
-  [2182, 1737, 1021, 1891, 959, 2734, 2408, 678, 0, 2329], 
-  [543, 597, 1494, 1220, 2300, 923, 205, 2442, 2329, 0]
-];
 
 // dependant on the matrix, this array has to be in correct order.
 /*let devices: string[] = ['Atlanta', 'Chicago', 'Denver', 'Houston', 'Los Angeles', 'Miami', 'New York', 'San Francisco', 'Seattle', 'Washington, DC'];
@@ -125,6 +137,11 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
       }
     }
   }
+  // stabilisierung der festen Devices im Dreieck
+  if(names[2] === '000002') {
+    //newMatrix[0][1] = newMatrix[0][2] = newMatrix[1][0] = newMatrix[1][2] = newMatrix[2][0] = newMatrix[2][1] = givenDistance;
+  }
+
   return newMatrix;
 }
 
@@ -216,7 +233,7 @@ wssP.on('connection', function connection(ws: WebSocket): void {
 });
 
 function showDeviceList(): string {
-  let completeString = 'Derzeit verbundene Geräte:\x1b[33m ' + wssP.clients.size + '\x1b[0m   ';
+  let completeString = 'Geräte:\x1b[33m ' + wssP.clients.size + '\x1b[0m  ';
   deviceList.forEach(device => {
     let singleDevice = '|\x1b[32m ' + device.id + ': \x1b[0m';
     device.foundDevices.forEach(foundDevice => {
@@ -264,9 +281,12 @@ function addToDeviceList(item: DeviceList): void {
 
 }
 
-function ping(): void {
+function showDevices() {
   // wssP.clients.size return the amount of individual connections.
   process.stdout.write('' + showDeviceList() + '\r');
+}
+
+function ping(): void {
   wssP.clients.forEach(function each(ws: WebSocket) {
     //need to convert it to be Typescript conform
     const extWs: ExtWebSocket = ws as ExtWebSocket;
