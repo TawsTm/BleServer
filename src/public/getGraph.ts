@@ -3,6 +3,7 @@ declare let d3: any;
 
 let corrected: boolean = false;
 let matrix: number[][] = [];
+let coordinatesList: number[][][] = []; // stores a list of the last n Coordinates
 let deviceList: DeviceList[] = [];
 
 // The List of all Connected Devices and their Devices in Range.
@@ -49,8 +50,20 @@ socket.addEventListener('message', (event) => {
   } else {
     let json = JSON.parse(event.data);
     //console.log(json);
-    const coordinates = json.coordinatePoints;
+
+    // Use latest coordinates if Device-Count has changed.
+    if(coordinatesList.length > 0 && (coordinatesList[coordinatesList.length-1].length !== json.coordinatePoints.length)) {
+      console.log('Device-Count has changed!');
+      coordinatesList = json.coordinatePoints;
+    } else {
+      if(coordinatesList.length > 40) {
+        coordinatesList.shift();
+      }
+      coordinatesList.push(json.coordinatePoints);
+    }
+    const coordinates = averageCoordinates();
     const names = json.names;
+    // add matrix to matrixList and calculate average matrix
     matrix = json.matrix;
     deviceList = json.deviceList;
     
@@ -99,7 +112,8 @@ function drawGraph(_points_data: number[][], _names: string[]) {
   keys: string[], links: any, links_data: any, max_x: number, max_y: number, min_x: number, 
   min_y: number, points: any, points_data: any, svg: any, x: any, y: any;
 
-  //console.log('*********************NewLine*************************');
+  console.log('*********************NewLine*************************');
+  console.table(_points_data);
 
   svg = d3.select('#map');
   svg.selectAll('*').remove();
@@ -146,10 +160,15 @@ function drawGraph(_points_data: number[][], _names: string[]) {
   max_y = d3.max(corner_points, (d: any) =>
     d[1]
   );
+
+  // Use middlePoints to determine the center of the Graph.
+  const mid_x = (min_x + max_x)/2
+  const mid_y = (min_y + max_y)/2
+  const roomSize = 2;
   
   // The range of the values is set with the given svg-size
-  x = d3.scale.linear().domain([max_x, min_x]).range([MARGINX, width - MARGINX]);
-  y = d3.scale.linear().domain([min_y, max_y]).range([MARGINY, height - MARGINY]);
+  x = d3.scale.linear().domain([mid_x+(roomSize/2), mid_x-(roomSize/2)]).range([MARGINX, width - MARGINX]);
+  y = d3.scale.linear().domain([mid_y-(roomSize/2), mid_y+(roomSize/2)]).range([MARGINY, height - MARGINY]);
 
   links_data = [];
 
@@ -256,6 +275,30 @@ function drawGraph(_points_data: number[][], _names: string[]) {
     });
   });
 
+}
+
+function averageCoordinates(): number[][] {
+  let newCoordinates: number[][] = []
+  for (let i = 0; i < coordinatesList[coordinatesList.length-1].length; i++) {
+    
+    let averageX = 0;
+    let averageY = 0;
+    for (let j = 0; j < coordinatesList.length; j++) {
+      // CoordinatenListe j an der Stelle i.
+      const xCoordinate = coordinatesList[j][i][0];
+      const yCoordinate = coordinatesList[j][i][1];
+      averageX += xCoordinate;
+      averageY += yCoordinate;
+    }
+    averageX = averageX / coordinatesList.length;
+    averageY = averageY / coordinatesList.length;
+
+    const newCoordinate = [averageX, averageY];
+    newCoordinates.push(newCoordinate);
+    
+  }
+
+  return newCoordinates;
 }
 
 function printMatrix() {
