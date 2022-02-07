@@ -52,6 +52,9 @@ function question() {
 let deviceList: DeviceList[] = [];
 let names: string[] = [];
 
+// This Factor determines how the RSSI should be Converted to a linear Value.
+let linearFactor = 1;
+
 let logData = setInterval(dataToLog, 500)
 
 
@@ -139,7 +142,7 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
   }
   // stabilisierung der festen Devices im Dreieck
   if(names[2] === '000002') {
-    //newMatrix[0][1] = newMatrix[0][2] = newMatrix[1][0] = newMatrix[1][2] = newMatrix[2][0] = newMatrix[2][1] = givenDistance;
+    newMatrix[0][1] = newMatrix[0][2] = newMatrix[1][0] = newMatrix[1][2] = newMatrix[2][0] = newMatrix[2][1] = givenDistance;
   }
 
   return newMatrix;
@@ -153,7 +156,7 @@ function fillMatrix(initDevice: DeviceList[]): number[][] {
 function logMatrix(): any {
   // TODO There could be 3 Devices but the Gradient would throw an error.
   if (deviceList.length >= 3) {
-    console.log(fillMatrix(deviceList));
+    // console.log(fillMatrix(deviceList));
     // Fill Matrix -> Use MDS -> Correct Coordinates in Result
     return correctThreePointGraph(mds_classic(fillMatrix(deviceList)));
   } else {
@@ -379,7 +382,7 @@ function mds_classic(distances: any, dimensions: number = 2): any {
 }
 
 // Update den Clienten alle 500ms
-let updateGraphInterval: NodeJS.Timer = setInterval(updateGraph, 500);
+let updateGraphInterval: NodeJS.Timer = setInterval(updateGraph, 100);
 
 function updateGraph(): void {
   // wssP.clients.size return the amount of individual connections.
