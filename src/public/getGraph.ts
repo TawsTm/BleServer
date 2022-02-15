@@ -162,8 +162,8 @@ function drawGraph(_points_data: number[][], _names: string[]) {
   );
 
   // Use middlePoints to determine the center of the Graph.
-  const mid_x = (min_x + max_x)/2
-  const mid_y = (min_y + max_y)/2
+  const mid_x = (min_x + max_x)/2;
+  const mid_y = (min_y + max_y)/2;
   const roomSize = 2;
   
   // The range of the values is set with the given svg-size
