@@ -16,7 +16,8 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-question();
+// Can be used to ask for triangle distance, if MDS with threepoint correction is used.
+/**question();
 
 function question() {
   rl.question('What distance do the triangle devices show in average?\n', function (distance: string) {
@@ -33,7 +34,9 @@ function question() {
   rl.on('close', function() {
     console.log('Distance is set to: ' + givenDistance);
   })
-}
+}**/
+
+setInterval(showDevices, 2000);
 
 // Create the tunnel for localhost
 (async () => {
